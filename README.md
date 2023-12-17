@@ -2,51 +2,144 @@
 
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 
-RxTimer is a timer utility leveraging RxJS for countdown functionality.
-
-## Features
-
-- **Start Timer**: Begin the countdown.
-- **Pause Timer**: Temporarily pause an ongoing countdown.
-- **Resume Timer**: Resume a paused countdown.
-- **Reset Timer**: Reset the countdown to its initial state.
-- **Stop Timer**: Halt the countdown.
-
-## Usage
-
-```typescript
-import { RxTimer } from 'path/to/RxTimer';
-
-// Create a timer with a duration of 10 seconds
-const timer = new RxTimer(10000);
-
-// Subscribe to the 'onTick' event
-timer.onTick().subscribe(() => {
-  // Handle onTick event
-});
-
-// Start the timer
-timer.start();
-
-// Pause the timer
-timer.pause();
-
-// Resume the timer
-timer.resume();
-
-// Reset the timer
-timer.reset();
-
-// Stop the timer
-timer.stop();
-```
+RxTimer is a countdown timer utility with observable events for managing timers in Angular applications.
 
 ## Installation
 
-To install RxTimer, you can use npm:
+To install the RxTimer utility, use npm:
 
 ```bash
 npm install --save rx-timer
+```
+
+## Usage
+
+Import the `RxTimer` class into your Angular component or service:
+
+```typescript
+import { RxTimer, RxTimerEvent } from 'rx-timer';
+```
+
+Create an instance of `RxTimer`:
+
+```typescript
+const timer = new RxTimer(5000); // Timer duration: 5000 milliseconds (5 seconds)
+```
+
+### Methods
+
+#### `start()`
+
+Starts the countdown timer.
+
+```typescript
+timer.start();
+```
+
+#### `pause()`
+
+Pauses the countdown timer if it's currently running.
+
+```typescript
+timer.pause();
+```
+
+#### `resume()`
+
+Resumes the countdown timer if it's paused and not finished.
+
+```typescript
+timer.resume();
+```
+
+#### `reset()`
+
+Resets the countdown and clears any active subscription.
+
+```typescript
+timer.reset();
+```
+
+#### `stop()`
+
+Stops the countdown and completes the timer.
+
+```typescript
+timer.stop();
+```
+
+### Observables
+
+#### `onStart()`
+
+Returns an Observable that emits when the timer starts.
+
+```typescript
+timer.onStart().subscribe(() => {
+  // Handle start event
+});
+```
+
+#### `onPause()`
+
+Returns an Observable that emits when the timer pauses.
+
+```typescript
+timer.onPause().subscribe(() => {
+  // Handle pause event
+});
+```
+
+#### `onResume()`
+
+Returns an Observable that emits when the timer resumes.
+
+```typescript
+timer.onResume().subscribe(() => {
+  // Handle resume event
+});
+```
+
+#### `onStop()`
+
+Returns an Observable that emits when the timer stops.
+
+```typescript
+timer.onStop().subscribe(() => {
+  // Handle stop event
+});
+```
+
+#### `onTick()`
+
+Returns an Observable that emits on each tick of the timer.
+
+```typescript
+timer.onTick().subscribe(() => {
+  // Handle tick event
+});
+```
+
+#### `onEvent()`
+
+Returns an Observable that emits all timer events.
+
+```typescript
+timer.onEvent().subscribe((event: RxTimerEvent) => {
+  // Handle any timer event
+});
+```
+
+## Example
+
+```typescript
+const timer = new RxTimer(10000); // Timer duration: 10 seconds
+
+timer.onTick().subscribe(() => {
+  console.log('Tick!');
+});
+
+timer.start();
 ```
 
 ## License
