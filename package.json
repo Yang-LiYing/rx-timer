@@ -1,13 +1,17 @@
 {
   "name": "rx-timer",
   "version": "1.0.0",
-  "description": "",
+  "description": "A timer utility using RxJS for countdown functionality.",
   "main": "index.js",
   "scripts": {
     "test": "jest",
+    "test:watch": "jest --watch",
     "build": "rm -rf ./dist && tsc && cp package.json ./dist/package.json && cp LICENSE ./dist/LICENSE && cp README.md ./dist/README.md"
   },
-  "keywords": [],
+  "engines" : { 
+    "node" : ">=16.19.0"
+  },
+  "keywords": ["rxjs", "timer"],
   "author": "Tim Yang",
   "license": "MIT",
   "dependencies": {
