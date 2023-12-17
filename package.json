@@ -5,6 +5,7 @@
   "main": "index.js",
   "scripts": {
     "test": "jest",
+    "test:watch": "jest --watch",
     "build": "rm -rf ./dist && tsc && cp package.json ./dist/package.json && cp LICENSE ./dist/LICENSE && cp README.md ./dist/README.md"
   },
   "keywords": [],

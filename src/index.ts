@@ -1,12 +1,14 @@
-import {
-  Observable,
-  SchedulerLike,
-  Subject,
-  Subscription,
-  interval,
-  race,
-} from "rxjs";
+import { Observable, Subject, Subscription, interval, race } from "rxjs";
 import { takeUntil } from "rxjs/operators";
+
+export type RxTimerOptions = {
+  /**
+   * When set to true, this property enables the timer to automatically 
+   * start the next countdown cycle after being paused until the 'stop()' 
+   * method is called.
+   */
+  continue?: boolean;
+};
 
 /**
  * RxTimer - A timer utility using RxJS for countdown functionality.
@@ -49,7 +51,11 @@ export class RxTimer {
 
   private countingSubscriptions: Subscription | null = null;
 
-  constructor(private duration: number) {}
+  constructor(private duration: number, private options: RxTimerOptions = {}) {
+    // Fill in defaults
+    const defaultOptions: RxTimerOptions = { continue: false };
+    this.options = { ...defaultOptions, ...this.options };
+  }
 
   /**
    * Start the countdown timer.
@@ -106,10 +112,7 @@ export class RxTimer {
     // 重置倒數計時的剩餘時間
     this.remaining = duration;
     this.startTime = new Date().getTime();
-    this.countingSubscriptions = race(
-      interval(this.remaining),
-      this.pause$
-    )
+    this.countingSubscriptions = race(interval(this.remaining), this.pause$)
       .pipe(takeUntil(race(this.stop$, this.tick$)))
       .subscribe(
         () => {
@@ -118,12 +121,16 @@ export class RxTimer {
           if (remaining > 0) {
             // pause
             this.remaining = remaining;
+            this.countingSubscriptions?.unsubscribe();
+            this.countingSubscriptions = null;
           } else {
             // done
             this.tick$.next();
+            this.countingSubscriptions?.unsubscribe();
+            this.countingSubscriptions = null;
+            // next time
+            if (this.options.continue) this.startCount(this.duration);
           }
-          this.countingSubscriptions?.unsubscribe();
-          this.countingSubscriptions = null;
         },
         () => {},
         () => {

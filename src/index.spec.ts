@@ -100,4 +100,23 @@ describe("RxTimer", () => {
       }, 200);
     },200);
   });
+
+  it('should receive two onTick events after 250ms with continue: true', (done) => {
+    const timer = new RxTimer(100, {continue: true});
+    let tickCount = 0;
+  
+    timer.onTick().subscribe(() => {
+      tickCount++;
+    });
+  
+    timer.start();
+  
+    setTimeout(() => {
+      timer.stop();
+
+      expect(tickCount).toBe(2);
+      done();
+    }, 250);
+  });
+  
 });
