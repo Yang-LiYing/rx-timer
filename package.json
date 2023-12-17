@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "A timer utility using RxJS for countdown functionality.",
   "main": "index.js",
+  "types": "index.d.ts",
   "scripts": {
     "test": "jest",
     "test:watch": "jest --watch",
@@ -14,6 +15,14 @@
   "keywords": ["rxjs", "timer"],
   "author": "Tim Yang",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Yang-LiYing/rx-timer.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Yang-LiYing/rx-timer/issues"
+  },
+  "homepage": "https://github.com/Yang-LiYing/rx-timer#readme",
   "dependencies": {
     "rxjs": "^6.6.7"
   },
