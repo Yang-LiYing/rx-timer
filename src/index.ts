@@ -39,12 +39,8 @@ abstract class RxTimerStateBase {
  * Extends RxTimerStateBase and implements RxTimerState.
  */
 class RxTimerStableState extends RxTimerStateBase implements RxTimerState {
-  private get isCounting(): boolean {
-    return !!this.timer.countingSubscriptions;
-  }
-
   private get isPaused(): boolean {
-    return !this.isCounting && this.timer.remaining > 0; // Checks if the timer is paused
+    return this.timer.remaining > 0; // Checks if the timer is paused
   }
 
   /**
@@ -52,9 +48,6 @@ class RxTimerStableState extends RxTimerStateBase implements RxTimerState {
    * Changes the state to counting if not already counting and emits START event.
    */
   start(): void {
-    // If already counting, do nothing
-    if (this.isCounting) return;
-
     this.timer.setState(new RxTimerCountingState(this.timer));
     this.timer.emitEvent(RxTimerEvent.START);
   }
@@ -213,8 +206,6 @@ export class RxTimer {
   remaining: number = 0;
   /** Start time of the timer */
   startTime: number = -1;
-
-  countingSubscriptions: Subscription | null = null;
 
   constructor(public duration: number, public options: RxTimerOptions = {}) {
     // Fill in defaults
