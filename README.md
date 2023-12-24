@@ -1,6 +1,7 @@
 # RxTimer
 
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+[![Node.js CI](https://github.com/Yang-LiYing/rx-timer/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/Yang-LiYing/rx-timer/actions/workflows/test.yml)
 
 RxTimer is a utility for countdown timers, offering observable events for timer management in various applications.
 
