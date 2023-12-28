@@ -1,5 +1,6 @@
-import { interval, Observable, Subject, Subscription } from "rxjs";
-import { filter, map, take } from "rxjs/operators";
+import { Observable, Subject } from "rxjs";
+import { filter, map } from "rxjs/operators";
+import { RxTimerStableState, RxTimerState } from "./timer-state";
 
 /** Enum representing timer events */
 export enum RxTimerEvent {
@@ -8,198 +9,49 @@ export enum RxTimerEvent {
   PAUSE,
   RESUME,
   RESET,
-  TICK
+  TICK,
 }
 
 /** Interface for timer options */
 export type RxTimerOptions = {
   /**
-   * When set to true, this property enables the timer to automatically 
-   * start the next countdown cycle after being paused until the 'stop()' 
-   * method is called.
+   * When set to true, this property allows the timer to automatically initiate
+   * the subsequent countdown cycle upon pausing until the 'stop()' method is invoked.
+   *
+   * Alternatively, it allows pausing through the 'pause()' method and resumes counting
+   * upon the next 'resume()' invocation.
+   *
+   * Example:
+   * ```typescript
+   * cosnt timer = new RxTimer(1000, { continue: true });
+   *
+   * timer.onTick().subscribe(() => {
+   *   // Receiving a tick event every second
+   * });
+   *
+   * timer.start();
+   * ```
    */
   continue?: boolean;
+
+  /**
+   * Specifies the time in milliseconds when the timer should start counting down.
+   * If the current time has already passed the specified `beginTime`, the timer
+   * will immediately start counting down.
+   *
+   * Example:
+   * ```typescript
+   * const timestamp = new Date('2023-12-22T13:21:39+08:00').getTime();
+   * const timer = new RxTimer(1000, { beginTime: timestamp });
+   *
+   * timer.onTick().subscribe(() => {
+   *   // Starts counting 1 second after 2023-12-22T13:21:39+08:00 and receives tick events
+   * });
+   * timer.start();
+   * ```
+   */
+  beginTime?: number;
 };
-
-/** Represents the state of the timer */
-interface RxTimerState {
-  start(): void;
-  stop(): void;
-  pause(): void;
-  resume(): void;
-  reset(): void;
-}
-
-abstract class RxTimerStateBase {
-  constructor(protected timer: RxTimer) { }
-}
-
-/**
- * Represents the stable state of the timer when it's not actively counting down.
- * Extends RxTimerStateBase and implements RxTimerState.
- */
-class RxTimerStableState extends RxTimerStateBase implements RxTimerState {
-  private get isCounting(): boolean {
-    return !!this.timer.countingSubscriptions;
-  }
-
-  private get isPaused(): boolean {
-    return !this.isCounting && this.timer.remaining > 0; // Checks if the timer is paused
-  }
-
-  /**
-   * Action to start the timer.
-   * Changes the state to counting if not already counting and emits START event.
-   */
-  start(): void {
-    // If already counting, do nothing
-    if (this.isCounting) return;
-
-    this.timer.setState(new RxTimerCountingState(this.timer));
-    this.timer.emitEvent(RxTimerEvent.START);
-  }
-
-  /**
-   * Action to stop the timer.
-   * Resets the timer and emits STOP event if it's paused.
-   */
-  stop(): void {
-    // If not paused, do nothing
-    if (!this.isPaused) return;
-
-    this.timer.resetTimer();
-    this.timer.emitEvent(RxTimerEvent.STOP);
-  }
-
-  /**
-   * Action to pause the timer (no action in the stable state).
-   */
-  pause(): void {
-    return; // No action in the stable state
-  }
-
-  /**
-   * Action to resume the timer.
-   * Changes the state to counting if paused and emits RESUME event.
-   */
-  resume(): void {
-    // If not paused, do nothing
-    if (!this.isPaused) return;
-
-    this.timer.setState(new RxTimerCountingState(this.timer));
-    this.timer.emitEvent(RxTimerEvent.RESUME);
-  }
-
-  /**
-   * Action to reset the timer.
-   * Resets the timer and emits RESET event if it's paused.
-   */
-  reset(): void {
-    // If not paused, do nothing
-    if (!this.isPaused) return;
-
-    this.timer.resetTimer();
-    this.timer.emitEvent(RxTimerEvent.RESET);
-  }
-}
-/**
- * Represents the state of the timer when it's actively counting down.
- */
-class RxTimerCountingState extends RxTimerStateBase implements RxTimerState {
-  private countingSubscriptions: Subscription | null = null; // Subscription for counting
-
-  /**
-   * Constructs a new RxTimerCountingState.
-   * @param timer The RxTimer instance associated with this state
-   */
-  constructor(protected timer: RxTimer) {
-    super(timer);
-
-    // Start counting
-    const isResume = this.timer.remaining > 0;
-    if (!isResume) {
-      // Reset the start time if not resuming the timer
-      this.timer.initTimer();
-    }
-
-    this.startTimer();
-  }
-
-  private get isCounting(): boolean {
-    return !!this.countingSubscriptions; // Checks if timer is actively counting
-  }
-
-  /**
-   * Action to start the timer (no action if already counting).
-   */
-  start(): void {
-    // No action if already in counting state
-    return;
-  }
-
-  /**
-   * Action to stop the timer.
-   * Unsubscribes from counting, resets the timer, and switches to stable state.
-   */
-  stop(): void {
-    if (!this.isCounting) return;
-
-    this.countingSubscriptions?.unsubscribe();
-    this.timer.resetTimer();
-    this.timer.setState(new RxTimerStableState(this.timer));
-    this.timer.emitEvent(RxTimerEvent.STOP);
-  }
-
-  /**
-   * Action to pause the timer.
-   * Unsubscribes from counting and switches to stable state.
-   */
-  pause(): void {
-    if (!this.isCounting) return;
-    this.countingSubscriptions?.unsubscribe();
-
-    this.timer.setState(new RxTimerStableState(this.timer));
-    this.timer.emitEvent(RxTimerEvent.PAUSE);
-  }
-
-  /**
-   * Action to resume the timer (no action as it's already in counting state).
-   */
-  resume(): void {
-    // No action if already in counting state
-    return;
-  }
-
-  /**
-   * Action to reset the timer.
-   * Resets remaining time, unsubscribes from counting, and switches to stable state.
-   */
-  reset(): void {
-    if (!this.isCounting) return;
-    this.timer.remaining = 0;
-    this.countingSubscriptions?.unsubscribe();
-    this.timer.setState(new RxTimerStableState(this.timer));
-    this.timer.emitEvent(RxTimerEvent.RESET);
-  }
-
-  /**
-   * Starts the countdown timer.
-   * Handles counting down based on remaining time and emits TICK events.
-   */
-  private startTimer(): void {
-    this.countingSubscriptions = interval(this.timer.remaining).pipe(take(1)).subscribe(() => {
-      if (this.timer.options.continue) {
-        this.timer.initTimer();
-        this.timer.emitEvent(RxTimerEvent.TICK);
-        this.startTimer();
-      } else {
-        this.timer.resetTimer();
-        this.timer.emitEvent(RxTimerEvent.TICK);
-        this.timer.setState(new RxTimerStableState(this.timer));
-      }
-    });
-  }
-}
 
 /**
  * RxTimer class represents a countdown timer.
@@ -214,8 +66,6 @@ export class RxTimer {
   /** Start time of the timer */
   startTime: number = -1;
 
-  countingSubscriptions: Subscription | null = null;
-
   constructor(public duration: number, public options: RxTimerOptions = {}) {
     // Fill in defaults
     const defaultOptions: RxTimerOptions = { continue: false };
@@ -227,7 +77,9 @@ export class RxTimer {
   }
 
   /**
-   * Start the countdown timer.
+   * Initiates a timing cycle based on the provided duration and emits Tick
+   * events upon completion. Pause() can be used to pause the cycle, while stop()
+   * halts the ongoing timing cycle.
    * @method
    * @description Initiates the countdown based on the provided duration.
    */
@@ -236,7 +88,8 @@ export class RxTimer {
   }
 
   /**
-   * Pause the countdown timer.
+   * Pauses the ongoing timer and resumes from the remaining time upon the next
+   * execution of 'resume()'.
    * @method
    * @description Pauses the countdown if it's currently running.
    */
@@ -245,7 +98,8 @@ export class RxTimer {
   }
 
   /**
-   * Resume the countdown timer.
+   * Resumes timing from the paused state, continuing the countdown from the
+   * remaining time and triggers the 'Tick' event upon completion.
    * @method
    * @description Resumes the countdown if it's paused and not finished.
    */
@@ -257,18 +111,57 @@ export class RxTimer {
    * Reset the countdown timer.
    * @method
    * @description Resets the countdown and clears any active subscription.
+   * @deprecated Unable to differentiate distinctions within 'stop()'.
+   * Use 'stop()'. Expected removal in version 2.0.0.
    */
   reset(): void {
     this.state.reset();
   }
 
   /**
-   * Stop the countdown timer.
+   * Stop the timer and reset the remaining time. Resuming the timer using
+   * 'resume()' is not possible after stopping; it needs to be initiated
+   * again with 'start()' to begin the next timing cycle.
    * @method
    * @description Stops the countdown and completes the timer.
    */
   stop(): void {
     this.state.stop();
+  }
+
+  /**
+   * Checks if the timer is currently in a counting state.
+   * @returns {boolean} Returns true if the timer is in the counting state; otherwise, returns false.
+   */
+  isCounting(): boolean {
+    return this.state.isCounting();
+  }
+
+  /**
+   * Checks if the timer is currently in a stopped state.
+   * @returns {boolean} Returns true if the timer is in the stopped state; otherwise, returns false.
+   */
+  isStopped(): boolean {
+    return this.state.isStopped();
+  }
+
+  /**
+   * Checks if the timer is currently in a paused state.
+   * @returns {boolean} Returns true if the timer is in the paused state; otherwise, returns false.
+   */
+  isPaused(): boolean {
+    return this.state.isPaused();
+  }
+
+  /**
+   * Retrieves the remaining time on the timer in milliseconds.
+   * @returns {number} The remaining time on the timer.
+   *
+   * Note: When the specified `beginTime` has not yet been reached, `getRemainingMilliseconds()`
+   * will return 0, and the timer state will be considered as 'stopped'.
+   */
+  getRemainingMilliseconds(): number {
+    return this.state.getRemainingMilliseconds();
   }
 
   /**
@@ -296,47 +189,67 @@ export class RxTimer {
   }
 
   /**
-   * Returns an Observable that emits when the timer starts.
+   * Triggers an event to start a brand new timer when 'start()' is invoked.
+   * - Note: If the timer is paused, this event won't be received, and the timer
+   * won't restart. Use 'resume()' to resume a paused timer.
    * @returns Observable<void>
    */
   onStart(): Observable<void> {
-    return this.event$.pipe(filter(e => e === RxTimerEvent.START), map(() => { }))
+    return this.event$.pipe(
+      filter((e) => e === RxTimerEvent.START),
+      map(() => {})
+    );
   }
 
   /**
-   * Returns an Observable that emits when the timer pauses.
+   * Triggers an event to pause the timer upon 'pause()' invocation.
+   * - Note: Non-running timers won't receive this event upon 'pause()' invocation.
+   * For timers set with 'beginTime', pausing before the timer starts also won't trigger
+   * this event.
    * @returns Observable<void>
    */
   onPause(): Observable<void> {
-    return this.event$.pipe(filter(e => e === RxTimerEvent.PAUSE), map(() => { }))
+    return this.event$.pipe(
+      filter((e) => e === RxTimerEvent.PAUSE),
+      map(() => {})
+    );
   }
 
   /**
-   * Returns an Observable that emits when the timer resumes.
+   * Upon 'resume()' invocation, triggers an event to resume the timer.
    * @returns Observable<void>
    */
   onResume(): Observable<void> {
-    return this.event$.pipe(filter(e => e === RxTimerEvent.RESUME), map(() => { }))
+    return this.event$.pipe(
+      filter((e) => e === RxTimerEvent.RESUME),
+      map(() => {})
+    );
   }
 
   /**
-   * Returns an Observable that emits when the timer stops.
+   * Triggers an event upon invoking 'stop()' while the timer is running.
    * @returns Observable<void>
    */
   onStop(): Observable<void> {
-    return this.event$.pipe(filter(e => e === RxTimerEvent.STOP), map(() => { }))
+    return this.event$.pipe(
+      filter((e) => e === RxTimerEvent.STOP),
+      map(() => {})
+    );
   }
 
   /**
-   * Returns an Observable that emits on each tick of the timer.
+   * Triggers an event upon completion of a timing cycle.
    * @returns Observable<void>
    */
   onTick(): Observable<void> {
-    return this.event$.pipe(filter(e => e === RxTimerEvent.TICK), map(() => { }))
+    return this.event$.pipe(
+      filter((e) => e === RxTimerEvent.TICK),
+      map(() => {})
+    );
   }
 
   /**
-   * Returns an Observable that emits all timer events.
+   * All events related to the timer's state transition can be listened to from here.
    * @returns Observable<RxTimerEventEnum>
    */
   onEvent(): Observable<RxTimerEvent> {
