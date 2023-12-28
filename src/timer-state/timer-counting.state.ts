@@ -12,11 +12,6 @@ export class RxTimerCountingState
   implements RxTimerState
 {
   private countingSubscription: Subscription | null = null; // Subscription for counting
-
-  private get isCounting(): boolean {
-    return !!this.countingSubscription; // Checks if timer is actively counting
-  }
-
   /**
    * Action to start the timer (no action if already counting).
    */
@@ -24,13 +19,12 @@ export class RxTimerCountingState
     // Start counting
     const isResume = this.timer.remaining > 0;
     if (!isResume) {
+      this.timer.remaining = this.timer.duration;
       // Reset the start time if not resuming the timer
-      this.timer.initTimer();
-      
       this.timer.emitEvent(RxTimerEvent.START);
     }
 
-    this.startTimerImmediately();
+    this.startTimerImmediately(this.timer.remaining);
   }
 
   /**
@@ -38,7 +32,7 @@ export class RxTimerCountingState
    * Unsubscribes from counting, resets the timer, and switches to stable state.
    */
   stop(): void {
-    if (!this.isCounting) return;
+    if (!this.isCounting()) return;
 
     this.countingSubscription?.unsubscribe();
     this.timer.resetTimer();
@@ -51,8 +45,11 @@ export class RxTimerCountingState
    * Unsubscribes from counting and switches to stable state.
    */
   pause(): void {
-    if (!this.isCounting) return;
+    if (!this.isCounting()) return;
     this.countingSubscription?.unsubscribe();
+
+    this.timer.remaining =
+      this.timer.remaining - (new Date().getTime() - this.timer.startTime);
 
     this.timer.setState(new RxTimerStableState(this.timer));
     this.timer.emitEvent(RxTimerEvent.PAUSE);
@@ -71,26 +68,47 @@ export class RxTimerCountingState
    * Resets remaining time, unsubscribes from counting, and switches to stable state.
    */
   reset(): void {
-    if (!this.isCounting) return;
-    
+    if (!this.isCounting()) return;
+
     this.countingSubscription?.unsubscribe();
     this.timer.resetTimer();
     this.timer.setState(new RxTimerStableState(this.timer));
     this.timer.emitEvent(RxTimerEvent.RESET);
   }
 
+  isCounting(): boolean {
+    // Checks if timer is actively counting
+    return !!this.countingSubscription;
+  }
+
+  isStopped(): boolean {
+    return !this.countingSubscription;
+  }
+
+  isPaused(): boolean {
+    return !this.countingSubscription && this.timer.remaining > 0;
+  }
+
+  getRemainingMilliseconds(): number {
+    return this.countingSubscription
+      ? this.timer.remaining - (new Date().getTime() - this.timer.startTime)
+      : this.timer.remaining;
+  }
+
   /**
    * Starts the countdown timer.
    * Handles counting down based on remaining time and emits TICK events.
    */
-  private startTimerImmediately(): void {
+  private startTimerImmediately(duration: number): void {
+    this.timer.startTime = new Date().getTime();
+    this.timer.remaining = duration;
     this.countingSubscription = interval(this.timer.remaining)
       .pipe(take(1))
       .subscribe(() => {
         if (this.timer.options.continue) {
           this.timer.initTimer();
           this.timer.emitEvent(RxTimerEvent.TICK);
-          this.startTimerImmediately();
+          this.startTimerImmediately(this.timer.duration);
         } else {
           this.timer.resetTimer();
           this.timer.emitEvent(RxTimerEvent.TICK);

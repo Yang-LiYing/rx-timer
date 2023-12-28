@@ -8,16 +8,12 @@ import { RxTimerStateBase, RxTimerState } from "./timer-state";
  * Extends RxTimerStateBase and implements RxTimerState.
  */
 export class RxTimerStableState extends RxTimerStateBase implements RxTimerState {
-  private get isPaused(): boolean {
-    return this.timer.remaining > 0; // Checks if the timer is paused
-  }
-
   /**
    * Action to start the timer.
    * Changes the state to counting if not already counting and emits START event.
    */
   start(): void {
-    if(this.timer.options.beginTime) {
+    if (this.timer.options.beginTime) {
       this.timer.setState(new RxTimerCountingToBeginTimeState(this.timer));
       this.timer.start();
     } else {
@@ -32,7 +28,7 @@ export class RxTimerStableState extends RxTimerStateBase implements RxTimerState
    */
   stop(): void {
     // If not paused, do nothing
-    if (!this.isPaused) return;
+    if (!this.isPaused()) return;
 
     this.timer.resetTimer();
     this.timer.emitEvent(RxTimerEvent.STOP);
@@ -51,7 +47,7 @@ export class RxTimerStableState extends RxTimerStateBase implements RxTimerState
    */
   resume(): void {
     // If not paused, do nothing
-    if (!this.isPaused) return;
+    if (!this.isPaused()) return;
 
     this.timer.setState(new RxTimerCountingState(this.timer));
     this.timer.start();
@@ -64,9 +60,29 @@ export class RxTimerStableState extends RxTimerStateBase implements RxTimerState
    */
   reset(): void {
     // If not paused, do nothing
-    if (!this.isPaused) return;
+    if (!this.isPaused()) return;
 
     this.timer.resetTimer();
     this.timer.emitEvent(RxTimerEvent.RESET);
+  }
+
+  isCounting(): boolean {
+    // The stable state is already in a stopped state, thus always returning false
+    return false;
+  }
+
+  isStopped(): boolean {
+    // The stable state is already stopped; hence, checking if the remaining time is reset determines if it's stopped
+    const isReset = this.timer.remaining === 0;
+    return isReset;
+  }
+
+  isPaused(): boolean {
+    // If the stable state is stopped and there's remaining time, it means the timer hasn't finished counting
+    return this.timer.remaining > 0;
+  }
+
+  getRemainingMilliseconds(): number {
+    return this.timer.remaining;
   }
 }

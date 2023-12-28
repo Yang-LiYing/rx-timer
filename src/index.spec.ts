@@ -9,7 +9,6 @@ describe("RxTimer", () => {
 
     timer.start();
 
-    // 等待一段時間（例如 1100 毫秒），確保足夠的時間讓計時器觸發事件
     setTimeout(() => {
       expect(ticked).toBe(true);
       done();
@@ -270,7 +269,70 @@ describe("RxTimer", () => {
     }, 50);
   });
 
-  // TODO: stable state 透過resume切換 counting state 後resume事件應是從counting state發出
+  it("should start timer at specified time and emit two tick", (done) => {
+    const timer = new RxTimer(50, {
+      beginTime: new Date().getTime() + 500,
+      continue: true,
+    });
+    let tickCount = 0;
+
+    timer.onTick().subscribe(() => {
+      tickCount++;
+    });
+
+    timer.start();
+
+    setTimeout(() => {
+      timer.stop();
+      expect(tickCount).toBe(2);
+      done();
+    }, 630);
+  });
+
+  it("pauses the timer and reduces remaining time appropriately", (done) => {
+    const timer = new RxTimer(200);
+
+    timer.start();
+
+    setTimeout(() => {
+      timer.pause();
+      expect(timer.getRemainingMilliseconds() <= 150).toBe(true);
+      done();
+    }, 50);
+  });
+
+  it("retrieves the remaining time accurately during countdown", (done) => {
+    const timer = new RxTimer(200);
+
+    timer.start();
+
+    setTimeout(() => {
+      expect(timer.getRemainingMilliseconds() <= 100).toBe(true);
+      setTimeout(() => {
+        expect(timer.getRemainingMilliseconds() <= 50).toBe(true);
+        done();
+      }, 50);
+    }, 100);
+  });
+
+  it("accurately reflects remaining time after pause and resume", (done) => {
+    const timer = new RxTimer(200);
+
+    timer.start();
+
+    setTimeout(() => {
+      timer.pause();
+
+      expect(timer.getRemainingMilliseconds() <= 100).toBe(true);
+      setTimeout(() => {
+        timer.resume();
+        setTimeout(() => {
+          expect(timer.getRemainingMilliseconds() <= 50).toBe(true);
+          done();
+        }, 50);
+      }, 50);
+    }, 100);
+  });
 
   describe("testing continue option", () => {
     it("should receive two onTick events after 120ms with continue: true", (done) => {
@@ -290,24 +352,6 @@ describe("RxTimer", () => {
         done();
       }, 120);
     });
-  });
-
-
-  it("should start timer at specified time and emit two tick", (done) => {
-    const timer = new RxTimer(50, { beginTime: new Date().getTime() + 500, continue: true });
-    let tickCount = 0;
-
-    timer.onTick().subscribe(() => {
-      tickCount++;
-    });
-
-    timer.start();
-
-    setTimeout(() => {
-      timer.stop();
-      expect(tickCount).toBe(2);
-      done();
-    }, 630);
   });
 
   describe("testing beginTime option", () => {
@@ -377,6 +421,130 @@ describe("RxTimer", () => {
         expect(eventStack.join()).toBe([].join());
         done();
       }, 100);
+    });
+  });
+
+  describe("testing status", () => {
+    it("initializes timer as stopped", () => {
+      const timer = new RxTimer(50);
+
+      expect(timer.isCounting()).toBe(false);
+      expect(timer.isPaused()).toBe(false);
+      expect(timer.isStopped()).toBe(true);
+    });
+
+    it("starts the timer and sets it as counting", (done) => {
+      const timer = new RxTimer(50);
+
+      timer.start();
+
+      setTimeout(() => {
+        expect(timer.isCounting()).toBe(true);
+        expect(timer.isPaused()).toBe(false);
+        expect(timer.isStopped()).toBe(false);
+        done();
+      }, 20);
+    });
+
+    it("pauses the running timer and sets it as paused", (done) => {
+      const timer = new RxTimer(50);
+
+      timer.start();
+
+      setTimeout(() => {
+        timer.pause();
+
+        expect(timer.isCounting()).toBe(false);
+        expect(timer.isPaused()).toBe(true);
+        expect(timer.isStopped()).toBe(false);
+
+        done();
+      }, 20);
+    });
+
+    it("stops the running timer and sets it as stopped", (done) => {
+      const timer = new RxTimer(50);
+
+      timer.start();
+
+      setTimeout(() => {
+        timer.stop();
+
+        expect(timer.isCounting()).toBe(false);
+        expect(timer.isPaused()).toBe(false);
+        expect(timer.isStopped()).toBe(true);
+
+        done();
+      }, 20);
+    });
+
+    it("completes counting and transitions to the stopped state", (done) => {
+      const timer = new RxTimer(50);
+
+      let ticked = false;
+      timer.onTick().subscribe(() => {
+        ticked = true;
+      });
+
+      timer.start();
+
+      setTimeout(() => {
+        // finished counting
+        expect(ticked).toBe(true);
+
+        expect(timer.isCounting()).toBe(false);
+        expect(timer.isPaused()).toBe(false);
+        expect(timer.isStopped()).toBe(true);
+
+        done();
+      }, 80);
+    });
+
+    it("verifies timer state after reaching the begin time", (done) => {
+      const timer = new RxTimer(50, { beginTime: new Date().getTime() + 1000 });
+
+      timer.start();
+
+      setTimeout(() => {
+        expect(timer.getRemainingMilliseconds()).toBe(0);
+
+        expect(timer.isCounting()).toBe(false);
+        expect(timer.isPaused()).toBe(false);
+        expect(timer.isStopped()).toBe(true);
+        done();
+      }, 100);
+    });
+
+    it("verifies timer is stopped before starting", () => {
+      const timer = new RxTimer(1000);
+
+      expect(timer.isStopped()).toBe(true);
+
+      timer.start();
+
+      expect(timer.isStopped()).toBe(false);
+    });
+
+    it("verifies timer is paused after pausing", () => {
+      const timer = new RxTimer(1000);
+
+      timer.start();
+
+      expect(timer.isPaused()).toBe(false);
+
+      timer.pause();
+
+      expect(timer.isPaused()).toBe(true);
+    });
+
+    it("verifies timer is counting after starting", () => {
+      const timer = new RxTimer(1000);
+
+      expect(timer.isCounting()).toBe(false);
+
+      timer.start();
+
+      expect(timer.isCounting()).toBe(true);
     });
   });
 });

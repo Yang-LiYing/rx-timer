@@ -13,7 +13,7 @@ export class RxTimerCountingToBeginTimeState
 {
   private beginTimeSubscription: Subscription | null = null;
 
-  private get isCounting(): boolean {
+  private get isCountingToBeginTime(): boolean {
     return !!this.beginTimeSubscription;
   }
 
@@ -22,7 +22,7 @@ export class RxTimerCountingToBeginTimeState
    * @method
    */
   start(): void {
-    if (this.isCounting) return;
+    if (this.isCountingToBeginTime) return;
 
     const beginTime = this.timer.options.beginTime;
     if (!beginTime) return;
@@ -63,13 +63,29 @@ export class RxTimerCountingToBeginTimeState
     this.stopCountingToBeginTime();
   }
 
+  isCounting(): boolean {
+    return false;
+  }
+
+  isStopped(): boolean {
+    return true;
+  }
+
+  isPaused(): boolean {
+    return false;
+  }
+
+  getRemainingMilliseconds(): number {
+    return this.timer.remaining;
+  }
+
   /**
    * Stops the countdown to the specified beginTime.
    * Unsubscribes from the interval and sets the timer state to stable.
    * @private
    */
   private stopCountingToBeginTime(): void {
-    if (!this.isCounting) return;
+    if (!this.isCountingToBeginTime) return;
 
     this.beginTimeSubscription?.unsubscribe();
     this.timer.setState(new RxTimerStableState(this.timer));
