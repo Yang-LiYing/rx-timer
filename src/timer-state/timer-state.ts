@@ -7,6 +7,10 @@ export interface RxTimerState {
   pause(): void;
   resume(): void;
   reset(): void;
+  isCounting(): boolean;
+  isStopped(): boolean;
+  isPaused(): boolean;
+  getRemainingMilliseconds(): number;
 }
 
 export abstract class RxTimerStateBase {

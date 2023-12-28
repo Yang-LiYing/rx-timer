@@ -29,6 +29,7 @@ timer.start();
 ```
 
 ### API
+
 - Options
   - [continue](#continue)
   - [beginTime](#begintime)
@@ -38,6 +39,10 @@ timer.start();
   - [resume()](#resume)
   - [~~reset()~~](#reset)
   - [stop()](#stop)
+  - [isCounting()](#iscounting)
+  - [isStopped()](#isstopped)
+  - [isPaused()](#ispaused)
+  - [getRemainingMilliseconds()](#getremainingmilliseconds)
 - Observable
   - [onStart()](#onstart)
   - [onPause()](#onpause)
@@ -46,24 +51,29 @@ timer.start();
   - [onTick()](#ontick)
   - [onEvent()](#onevent)
 
-
 ### Options
 
 #### `continue`
+
 When set to true, this property allows the timer to automatically initiate the subsequent countdown cycle upon pausing until the 'stop()' method is invoked.
 
 Alternatively, it allows pausing through the 'pause()' method and resumes counting upon the next 'resume()' invocation.
 
 ```typescript
-const timer = new RxTimer({ continue: true });
+const timer = new RxTimer(1000, { continue: true });
+
+timer.start(); // timer will emit onTick at every second
 ```
 
 ### `beginTime`
+
 Specifies the time in milliseconds when the timer should start counting down. If the current time has already passed the specified `beginTime`, the timer will immediately start counting down.
 
 ```typescript
-const timestamp = new Date('2023-12-22T13:21:39+08:00').getTime();
+const timestamp = new Date("2023-12-22T13:21:39+08:00").getTime();
 const timer = new RxTimer(1000, { beginTime: timestamp });
+
+timer.start(); // timer will start with 2023-12-22T13:21:39+08:00
 ```
 
 ### Methods
@@ -73,7 +83,9 @@ const timer = new RxTimer(1000, { beginTime: timestamp });
 Initiates a timing cycle based on the provided duration and emits Tick events upon completion. Pause() can be used to pause the cycle, while stop() halts the ongoing timing cycle.
 
 ```typescript
-timer.start();
+const timer = new RxTimer(1000);
+
+timer.start(); // start to counting
 ```
 
 #### `pause()`
@@ -81,7 +93,13 @@ timer.start();
 Pauses the ongoing timer and resumes from the remaining time upon the next execution of 'resume()'.
 
 ```typescript
-timer.pause();
+const timer = new RxTimer(1000);
+
+timer.start();
+
+setTimeout(() => {
+  timer.pause(); // pauses the timer after 500 milliseconds
+}, 500);
 ```
 
 #### `resume()`
@@ -89,16 +107,29 @@ timer.pause();
 Resumes timing from the paused state, continuing the countdown from the remaining time and triggers the 'Tick' event upon completion.
 
 ```typescript
-timer.resume();
+const timer = new RxTimer(1000);
+
+timer.start();
+
+setTimeout(() => {
+  timer.pause(); // pauses the timer after 500 milliseconds
+
+  timer.resume(); // resumes the timer immediately after pausing and continues the remaining 500ms
+}, 500);
 ```
 
 #### ~~`reset()`~~
 
 Resets the countdown and clears any active subscription.
-- __Deprecated:__ Unable to differentiate distinctions within 'stop()'. Use 'stop()'. Expected removal in version 2.0.0.
+
+- **Deprecated:** Unable to differentiate distinctions within 'stop()'. Use 'stop()'. Expected removal in version 2.0.0.
 
 ```typescript
-timer.reset();
+const timer = new RxTimer(1000);
+
+timer.start(); // start counting
+
+timer.reset(); // reset counting
 ```
 
 #### `stop()`
@@ -106,8 +137,87 @@ timer.reset();
 Stop the timer and reset the remaining time. Resuming the timer using 'resume()' is not possible after stopping; it needs to be initiated again with 'start()' to begin the next timing cycle.
 
 ```typescript
-timer.stop();
+const timer = new RxTimer(1000);
+timer.start(); // start counting
+
+timer.stop(); // stop counting
 ```
+
+#### `isCounting()`
+
+Checks if the timer is currently in a counting state.
+
+```typescript
+const timer = new RxTimer(1000);
+
+timer.isCounting(); // false
+
+timer.start();
+
+timer.isCounting(); // true
+```
+
+#### `isStopped()`
+
+Checks if the timer is currently in a stopped state.
+
+```typescript
+const timer = new RxTimer(1000);
+
+timer.isStopped(); // true
+
+timer.start();
+
+timer.isStopped(); // false
+```
+
+#### `isPaused()`
+
+Checks if the timer is currently in a paused state.
+
+```typescript
+const timer = new RxTimer(1000);
+
+timer.start();
+
+timer.isPaused(); // false
+
+timer.pause();
+
+timer.isPaused(); // true
+```
+
+#### `getRemainingMilliseconds()`
+
+Retrieves the remaining time on the timer in milliseconds.
+
+```typescript
+const timer = new RxTimer(1000);
+
+timer.getRemainingMilliseconds(); // 0
+
+timer.start();
+
+setTimeout(() => {
+  timer.getRemainingMilliseconds(); // 487
+}, 500);
+```
+
+```typescript
+const timer = new RxTimer(1000, { beginTime: new Date().getTime() + 1000 });
+
+timer.start();
+
+setTimeout(() => {
+  timer.getRemainingMilliseconds(); // 0
+}, 500);
+
+setTimeout(() => {
+  timer.getRemainingMilliseconds(); // 498
+}, 1500);
+```
+
+Note: When the specified `beginTime` has not yet been reached, `getRemainingMilliseconds()` will return 0, and the timer state will be considered as 'stopped'.
 
 ### Observables
 
